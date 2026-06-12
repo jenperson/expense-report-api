@@ -1,14 +1,11 @@
-const Joi = require('joi');
+const Joi = require("joi");
 
-// BUG: The amount field is missing .positive() — negative values pass validation.
-// A submitted expense with amount: -150 will be accepted and saved to the database,
-// causing incorrect totals in expense reports.
-// Fix: change Joi.number().required() to Joi.number().positive().required()
+// FIX: Added .positive() to ensure amount must be positive
 const expenseSchema = Joi.object({
-  amount: Joi.number().required(),
-  currency: Joi.string().length(3).uppercase().default('USD'),
+  amount: Joi.number().positive().required(),
+  currency: Joi.string().length(3).uppercase().default("USD"),
   category: Joi.string()
-    .valid('travel', 'meals', 'lodging', 'office', 'other')
+    .valid("travel", "meals", "lodging", "office", "other")
     .required(),
   description: Joi.string().min(3).max(500).required(),
   date: Joi.date().iso().required(),
@@ -16,9 +13,9 @@ const expenseSchema = Joi.object({
 });
 
 const expenseUpdateSchema = Joi.object({
-  amount: Joi.number(),
+  amount: Joi.number().positive(),
   currency: Joi.string().length(3).uppercase(),
-  category: Joi.string().valid('travel', 'meals', 'lodging', 'office', 'other'),
+  category: Joi.string().valid("travel", "meals", "lodging", "office", "other"),
   description: Joi.string().min(3).max(500),
   date: Joi.date().iso(),
   receipt_url: Joi.string().uri().optional().allow(null),
@@ -28,7 +25,7 @@ function validateExpense(req, res, next) {
   const { error, value } = expenseSchema.validate(req.body, { abortEarly: false });
   if (error) {
     return res.status(400).json({
-      error: 'Validation failed',
+      error: "Validation failed",
       details: error.details.map((d) => d.message),
     });
   }
@@ -40,7 +37,7 @@ function validateExpenseUpdate(req, res, next) {
   const { error, value } = expenseUpdateSchema.validate(req.body, { abortEarly: false });
   if (error) {
     return res.status(400).json({
-      error: 'Validation failed',
+      error: "Validation failed",
       details: error.details.map((d) => d.message),
     });
   }
@@ -48,4 +45,4 @@ function validateExpenseUpdate(req, res, next) {
   next();
 }
 
-module.exports = { validateExpense, validateExpenseUpdate };
+module.exports = { validateExpense, validateExpenseUpdate }
