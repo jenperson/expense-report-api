@@ -44,7 +44,7 @@ router.get('/summary', requireAuth, (req, res) => {
     period: { start_date, end_date },
     by_category: rows,
     grand_total: grandTotal,
-    currency: 'USD',
+    currency: rows.length > 0 ? rows[0].currency : 'USD',
   });
 });
 
