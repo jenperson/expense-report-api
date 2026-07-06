@@ -37,6 +37,7 @@ function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       amount REAL NOT NULL,
+      amount_usd REAL NOT NULL DEFAULT 0,
       currency TEXT DEFAULT 'USD',
       category TEXT NOT NULL,
       description TEXT NOT NULL,
