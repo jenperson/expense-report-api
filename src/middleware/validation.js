@@ -1,11 +1,8 @@
 const Joi = require('joi');
 
-// BUG: The amount field is missing .positive() — negative values pass validation.
-// A submitted expense with amount: -150 will be accepted and saved to the database,
-// causing incorrect totals in expense reports.
-// Fix: change Joi.number().required() to Joi.number().positive().required()
+// Fixed: Added .positive() to prevent negative expense amounts
 const expenseSchema = Joi.object({
-  amount: Joi.number().required(),
+  amount: Joi.number().positive().required(),
   currency: Joi.string().length(3).uppercase().default('USD'),
   category: Joi.string()
     .valid('travel', 'meals', 'lodging', 'office', 'other')
@@ -16,7 +13,7 @@ const expenseSchema = Joi.object({
 });
 
 const expenseUpdateSchema = Joi.object({
-  amount: Joi.number(),
+  amount: Joi.number().positive(),
   currency: Joi.string().length(3).uppercase(),
   category: Joi.string().valid('travel', 'meals', 'lodging', 'office', 'other'),
   description: Joi.string().min(3).max(500),
