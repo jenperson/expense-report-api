@@ -21,6 +21,7 @@ router.get('/summary', requireAuth, (req, res) => {
       category,
       COUNT(*) as count,
       SUM(amount) as total,
+      SUM(amount_usd) as total_usd,
       currency
     FROM expenses
     WHERE user_id = ?
@@ -39,12 +40,14 @@ router.get('/summary', requireAuth, (req, res) => {
   const rows = db.prepare(query).all(...params);
 
   const grandTotal = rows.reduce((sum, row) => sum + row.total, 0);
+  const grandTotalUSD = rows.reduce((sum, row) => sum + row.total_usd, 0);
 
   res.json({
     period: { start_date, end_date },
     by_category: rows,
     grand_total: grandTotal,
-    currency: 'USD',
+    grand_total_usd: grandTotalUSD,
+    currency: rows.length > 0 ? rows[0].currency : 'USD',
   });
 });
 
