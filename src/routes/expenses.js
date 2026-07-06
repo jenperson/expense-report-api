@@ -30,13 +30,9 @@ router.get('/', requireAuth, (req, res) => {
     params.push(end_date);
   }
 
-  // BUG: Filter uses wrong column name 'category_name' — this column does not exist.
-  // The correct column is 'category'. As a result, filtering by ?category=travel returns
-  // all expenses for the user instead of only travel expenses, because the WHERE clause
-  // never matches and SQLite silently returns all rows.
-  // Fix: change 'category_name' to 'category'
+  // Fixed: Changed 'category_name' to 'category' to match the actual column name
   if (category) {
-    query += ' AND category_name = ?';
+    query += ' AND category = ?';
     params.push(category);
   }
 
