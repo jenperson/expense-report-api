@@ -2,6 +2,7 @@ const express = require('express');
 const { getDb } = require('../db/database');
 const { requireAuth } = require('../middleware/auth');
 const { validateExpense, validateExpenseUpdate } = require('../middleware/validation');
+const { convertToUSD } = require('../services/currencyService');
 
 const router = express.Router();
 
@@ -43,15 +44,18 @@ router.get('/', requireAuth, (req, res) => {
 });
 
 // POST /api/expenses
-router.post('/', requireAuth, validateExpense, (req, res) => {
+router.post('/', requireAuth, validateExpense, async (req, res) => {
   const db = getDb();
   const { amount, currency, category, description, date, receipt_url } = req.body;
   const userId = req.user.id;
 
+  // Convert to USD for storage
+  const amountUSD = await convertToUSD(amount, currency);
+
   const result = db.prepare(`
-    INSERT INTO expenses (user_id, amount, currency, category, description, date, receipt_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(userId, amount, currency, category, description, date, receipt_url || null);
+    INSERT INTO expenses (user_id, amount, amount_usd, currency, category, description, date, receipt_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(userId, amount, amountUSD, currency, category, description, date, receipt_url || null);
 
   const expense = db.prepare('SELECT * FROM expenses WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(expense);
@@ -72,7 +76,7 @@ router.get('/:id', requireAuth, (req, res) => {
 });
 
 // PUT /api/expenses/:id
-router.put('/:id', requireAuth, validateExpenseUpdate, (req, res) => {
+router.put('/:id', requireAuth, validateExpenseUpdate, async (req, res) => {
   const db = getDb();
   const expense = db.prepare(
     'SELECT * FROM expenses WHERE id = ? AND user_id = ?'
@@ -87,10 +91,22 @@ router.put('/:id', requireAuth, validateExpenseUpdate, (req, res) => {
   }
 
   const fields = Object.keys(req.body);
-  const setClauses = fields.map((f) => `${f} = ?`).join(', ');
+  const setClauses = fields.map((f) => f + ' = ?').join(', ');
   const values = fields.map((f) => req.body[f]);
 
-  db.prepare(`UPDATE expenses SET ${setClauses} WHERE id = ?`).run(...values, req.params.id);
+  // If amount or currency is being updated, recalculate amount_usd
+  if (fields.includes('amount') || fields.includes('currency')) {
+    const newAmount = req.body.amount || expense.amount;
+    const newCurrency = req.body.currency || expense.currency;
+    const newAmountUSD = await convertToUSD(newAmount, newCurrency);
+    
+    // Add amount_usd to the update
+    fields.push('amount_usd');
+    values.push(newAmountUSD);
+    setClauses += ', amount_usd = ?';
+  }
+
+  db.prepare('UPDATE expenses SET ' + setClauses + ' WHERE id = ?').run(...values, req.params.id);
 
   const updated = db.prepare('SELECT * FROM expenses WHERE id = ?').get(req.params.id);
   res.json(updated);
